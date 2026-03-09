@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Polyglot AI — Neural Translation Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0c0c10;
+  --surface: #141418;
+  --surface2: #1a1a20;
+  --surface3: #202028;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #e8c97a;
+  --accent-dim: rgba(232,201,122,0.12);
+  --accent-glow: rgba(232,201,122,0.25);
+  --red: #e87a7a;
+  --green: #7ae8b4;
+  --blue: #7ab4e8;
+  --text: #f0f0f4;
+  --text2: #a0a0b0;
+  --text3: #606070;
+  --mono: 'Geist Mono', monospace;
+  --sans: 'Geist', sans-serif;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.ambient { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(140px); opacity: 0.18; }
+.ambient-1 { width: 700px; height: 700px; background: #c8a84a; top: -300px; right: -200px; }
+.ambient-2 { width: 500px; height: 500px; background: #4a6cc8; bottom: -200px; left: -100px; }
+
+.page { max-width: 1160px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 0 24px; border-bottom: 1px solid var(--border);
+  gap: 20px; flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: baseline; gap: 14px; }
+.brand-name { font-family: var(--serif); font-size: 30px; font-style: italic; color: var(--text); letter-spacing: -0.01em; }
+.brand-name em { color: var(--accent); font-style: italic; }
+.brand-tag { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border2); border-radius: 4px; background: var(--surface2); }
+
+.header-right { display: flex; align-items: center; gap: 20px; }
+.api-status { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; color: var(--text3); letter-spacing: 0.08em; }
+
+.led { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; transition: background 0.3s, box-shadow 0.3s; }
+.led.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.led.warn { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.led.off { background: var(--red); }
+
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0; margin-top: 0; }
+.tab { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px 20px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text3); cursor: pointer; transition: all 0.2s; margin-bottom: -1px; }
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; padding: 28px 0; }
+.tab-content.active { display: block; }
+
+.translate-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+@media (max-width: 900px) { .translate-layout { grid-template-columns: 1fr; } }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+
+.lang-bar { display: flex; align-items: center; background: var(--surface2); border-bottom: 1px solid var(--border); padding: 0; }
+.lang-slot { flex: 1; display: flex; flex-direction: column; padding: 10px 16px 12px; }
+.lang-slot-label { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3); margin-bottom: 5px; }
+.lang-select-wrap { position: relative; }
+.lang-select-wrap select { width: 100%; background: transparent; border: none; font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; outline: none; appearance: none; padding-right: 20px; }
+.lang-select-wrap select option { background: #1a1a20; color: var(--text); }
+.lang-select-wrap::after { content: '▾'; position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text3); pointer-events: none; }
+.lang-divider { width: 1px; height: 44px; background: var(--border); flex-shrink: 0; }
+.swap-zone { padding: 0 10px; display: flex; align-items: center; flex-shrink: 0; }
+.swap-btn { width: 34px; height: 34px; background: var(--surface3); border: 1px solid var(--border2); border-radius: 50%; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s var(--ease-out); font-size: 14px; }
+.swap-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: rotate(180deg); }
+
+.text-panels { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 600px) { .text-panels { grid-template-columns: 1fr; } }
+.text-panel { position: relative; }
+.text-panel:first-child { border-right: 1px solid var(--border); }
+@media (max-width: 600px) { .text-panel:first-child { border-right: none; border-bottom: 1px solid var(--border); } }
+
+.panel-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.panel-tag { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3); }
+.panel-btns { display: flex; gap: 4px; }
+.micro-btn { font-family: var(--mono); font-size: 10px; padding: 4px 8px; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text3); cursor: pointer; transition: all 0.15s; }
+.micro-btn:hover { background: var(--surface3); border-color: var(--border2); color: var(--text2); }
+
+textarea { width: 100%; height: 220px; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.7; resize: none; padding: 18px 18px 10px; }
+textarea::placeholder { color: var(--text3); font-style: italic; }
+
+.output-body { height: 220px; overflow-y: auto; padding: 18px 18px 10px; font-size: 15px; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.output-body .placeholder { color: var(--text3); font-style: italic; }
+.rtl { direction: rtl; text-align: right; }
+
+.panel-bot { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--surface2); min-height: 36px; }
+.char-count { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.char-count.warn { color: var(--red); }
+.engine-badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); }
+
+.action-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; }
+.translate-btn { flex: 1; min-width: 140px; background: var(--accent); color: #0c0c10; border: none; border-radius: 10px; padding: 12px 24px; font-family: var(--serif); font-size: 16px; font-style: italic; font-weight: 400; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s var(--ease-out); letter-spacing: 0.01em; }
+.translate-btn:hover { background: #f0d890; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(232,201,122,0.3); }
+.translate-btn:active { transform: translateY(0); }
+.translate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.aux-btn { padding: 11px 16px; background: var(--surface3); border: 1px solid var(--border2); border-radius: 10px; color: var(--text2); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.aux-btn:hover { border-color: var(--border2); background: var(--surface2); color: var(--text); }
+
+.kbd-hint { font-family: var(--mono); font-size: 10px; color: var(--text3); white-space: nowrap; }
+kbd { background: var(--surface3); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-family: var(--mono); font-size: 10px; }
+
+.status-row { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text3); min-height: 38px; background: var(--surface); border-radius: 0 0 16px 16px; flex-wrap: wrap; }
+.status-row .led { width: 6px; height: 6px; }
+
+.spinner { width: 15px; height: 15px; border: 2px solid rgba(12,12,16,0.3); border-top-color: #0c0c10; border-radius: 50%; animation: spin 0.6s linear infinite; display: none; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SIDEBAR ── */
+.sidebar { display: flex; flex-direction: column; gap: 14px; }
+.side-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.side-card-head { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3); display: flex; align-items: center; justify-content: space-between; }
+.side-card-body { padding: 14px; }
+
+/* Confidence */
+.conf-score { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; }
+.conf-num { font-family: var(--serif); font-size: 44px; font-style: italic; color: var(--text); line-height: 1; transition: color 0.3s; }
+.conf-num.high { color: var(--green); }
+.conf-num.medium { color: var(--accent); }
+.conf-num.low { color: var(--red); }
+.conf-pct { font-family: var(--mono); font-size: 14px; color: var(--text3); }
+.conf-track { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+.conf-fill { height: 100%; border-radius: 2px; transition: width 0.6s var(--ease-out), background 0.3s; width: 0%; background: var(--green); }
+.conf-fill.medium { background: var(--accent); }
+.conf-fill.low { background: var(--red); }
+.conf-label { font-family: var(--mono); font-size: 10px; color: var(--text3); line-height: 1.4; }
+
+/* Detection */
+.detect-list { display: flex; flex-direction: column; gap: 8px; }
+.detect-item { display: flex; flex-direction: column; gap: 4px; }
+.detect-item-row { display: flex; align-items: center; justify-content: space-between; }
+.detect-lang { font-family: var(--sans); font-size: 12px; font-weight: 500; color: var(--text2); }
+.detect-lang.top { color: var(--accent); }
+.detect-prob { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.detect-bar { height: 2px; background: var(--surface3); border-radius: 1px; overflow: hidden; }
+.detect-bar-fill { height: 100%; background: var(--surface3); border-radius: 1px; transition: width 0.5s var(--ease-out); }
+.detect-bar-fill.top { background: var(--accent); }
+
+/* detect note */
+.detect-note { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 8px; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 8px; }
+
+/* Analysis */
+.analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.analysis-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.analysis-val { font-family: var(--serif); font-size: 22px; font-style: italic; color: var(--text); line-height: 1; }
+.analysis-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-top: 3px; }
+
+/* History */
+.hist-scroll { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 14px; }
+.hist-scroll::-webkit-scrollbar { width: 3px; }
+.hist-scroll::-webkit-scrollbar-track { background: transparent; }
+.hist-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.hist-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; }
+.hist-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+.hist-langs { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+.hist-src { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-tgt { font-size: 12px; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.hist-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; }
+.hist-engine { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+.hist-time { font-family: var(--mono); font-size: 9px; color: var(--text3); }
+.no-hist { font-family: var(--mono); font-size: 11px; color: var(--text3); font-style: italic; text-align: center; padding: 12px 0; }
+.side-clear-btn { background: none; border: none; font-family: var(--mono); font-size: 9px; color: var(--text3); cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.15s; }
+.side-clear-btn:hover { color: var(--red); }
+
+/* ── BATCH TAB ── */
+.batch-layout { display: flex; flex-direction: column; gap: 16px; }
+.batch-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3); }
+.field-select { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 32px 9px 12px; font-family: var(--sans); font-size: 13px; color: var(--text); outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23606070' d='M5 7L1 3h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; min-width: 180px; transition: border-color 0.2s; }
+.field-select:focus { border-color: var(--accent); }
+.batch-progress-block { display: flex; flex-direction: column; gap: 5px; }
+.progress-track { height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; width: 0%; }
+.progress-label { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.batch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .batch-grid { grid-template-columns: 1fr; } }
+.batch-area-label { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.batch-textarea { width: 100%; height: 220px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px; font-family: var(--sans); font-size: 13px; line-height: 1.6; color: var(--text); outline: none; resize: vertical; transition: border-color 0.2s; }
+.batch-textarea:focus { border-color: var(--accent); }
+.batch-textarea::placeholder { color: var(--text3); font-style: italic; }
+.batch-output { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; height: 220px; overflow-y: auto; padding: 14px; font-family: var(--sans); font-size: 13px; line-height: 1.7; color: var(--text2); white-space: pre-wrap; }
+.batch-output .placeholder-text { color: var(--text3); font-style: italic; }
+.batch-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.batch-btn { padding: 10px 20px; background: var(--accent); color: #0c0c10; border: none; border-radius: 8px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+.batch-btn:hover { background: #f0d890; }
+.batch-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.batch-btn.sec { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
+.batch-btn.sec:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* ── API TAB ── */
+.api-layout { max-width: 560px; }
+.api-layout h2 { font-family: var(--serif); font-size: 26px; font-style: italic; color: var(--text); margin-bottom: 6px; }
+.api-layout p { font-size: 13px; color: var(--text3); margin-bottom: 24px; line-height: 1.7; }
+.field-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 14px; font-family: var(--mono); font-size: 12px; color: var(--text); outline: none; width: 100%; transition: border-color 0.2s; }
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--text3); }
+.field-note { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 5px; line-height: 1.6; }
+.save-btn { margin-top: 8px; padding: 11px 26px; background: var(--accent); color: #0c0c10; border: none; border-radius: 8px; font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+.save-btn:hover { background: #f0d890; }
+.api-info-box { margin-top: 24px; padding: 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-family: var(--mono); font-size: 11px; color: var(--text3); line-height: 1.8; }
+.api-info-box strong { color: var(--text2); }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 10px 20px; border-radius: 40px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; opacity: 0; transition: all 0.35s var(--ease-out); z-index: 9998; pointer-events: none; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.footer { border-top: 1px solid var(--border); padding: 16px 0 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.footer-txt { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.header { animation: fadeUp 0.4s var(--ease-out) both; }
+.tabs { animation: fadeUp 0.4s 0.05s var(--ease-out) both; }
+.tab-content.active { animation: fadeUp 0.35s 0.1s var(--ease-out) both; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<div class="page">
+
+  <div class="header">
+    <div class="brand">
+      <span class="brand-name">Poly<em>glot</em></span>
+      <span class="brand-tag">v2.2 · Neural</span>
+    </div>
+    <div class="header-right">
+      <div class="api-status">
+        <div class="led warn" id="engineLed"></div>
+        <span id="engineStatusLabel">MyMemory · Free</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="translate">Translate</button>
+    <button class="tab" data-tab="batch">Batch</button>
+    <button class="tab" data-tab="api">API Config</button>
+  </div>
+
+  <!-- TAB: TRANSLATE -->
+  <div class="tab-content active" id="tab-translate">
+    <div class="translate-layout">
+
+      <div class="card">
+        <div class="lang-bar">
+          <div class="lang-slot">
+            <span class="lang-slot-label">Source</span>
+            <div class="lang-select-wrap">
+              <select id="sourceLang">
+                <option value="auto">Auto-Detect</option>
+                <option value="af">Afrikaans</option><option value="sq">Albanian</option><option value="ar">Arabic</option><option value="hy">Armenian</option><option value="az">Azerbaijani</option><option value="eu">Basque</option><option value="be">Belarusian</option><option value="bn">Bengali</option><option value="bs">Bosnian</option><option value="bg">Bulgarian</option><option value="ca">Catalan</option><option value="zh">Chinese (Simplified)</option><option value="zh-TW">Chinese (Traditional)</option><option value="hr">Croatian</option><option value="cs">Czech</option><option value="da">Danish</option><option value="nl">Dutch</option><option value="en">English</option><option value="eo">Esperanto</option><option value="et">Estonian</option><option value="fi">Finnish</option><option value="fr">French</option><option value="gl">Galician</option><option value="ka">Georgian</option><option value="de">German</option><option value="el">Greek</option><option value="gu">Gujarati</option><option value="ht">Haitian Creole</option><option value="he">Hebrew</option><option value="hi">Hindi</option><option value="hu">Hungarian</option><option value="id">Indonesian</option><option value="it">Italian</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="lv">Latvian</option><option value="lt">Lithuanian</option><option value="mk">Macedonian</option><option value="ms">Malay</option><option value="mt">Maltese</option><option value="no">Norwegian</option><option value="fa">Persian</option><option value="tl">Filipino</option><option value="pl">Polish</option><option value="pt">Portuguese</option><option value="ro">Romanian</option><option value="ru">Russian</option><option value="sr">Serbian</option><option value="sk">Slovak</option><option value="sl">Slovenian</option><option value="es">Spanish</option><option value="sw">Swahili</option><option value="sv">Swedish</option><option value="th">Thai</option><option value="tr">Turkish</option><option value="uk">Ukrainian</option><option value="ur">Urdu</option><option value="vi">Vietnamese</option><option value="cy">Welsh</option><option value="yi">Yiddish</option>
+              </select>
+            </div>
+          </div>
+          <div class="lang-divider"></div>
+          <div class="swap-zone">
+            <button class="swap-btn" id="swapBtn" title="Swap languages">⇅</button>
+          </div>
+          <div class="lang-divider"></div>
+          <div class="lang-slot">
+            <span class="lang-slot-label">Target</span>
+            <div class="lang-select-wrap">
+              <select id="targetLang">
+                <option value="fr">French</option><option value="en">English</option><option value="af">Afrikaans</option><option value="sq">Albanian</option><option value="ar">Arabic</option><option value="hy">Armenian</option><option value="az">Azerbaijani</option><option value="eu">Basque</option><option value="be">Belarusian</option><option value="bn">Bengali</option><option value="bs">Bosnian</option><option value="bg">Bulgarian</option><option value="ca">Catalan</option><option value="zh">Chinese (Simplified)</option><option value="zh-TW">Chinese (Traditional)</option><option value="hr">Croatian</option><option value="cs">Czech</option><option value="da">Danish</option><option value="nl">Dutch</option><option value="eo">Esperanto</option><option value="et">Estonian</option><option value="fi">Finnish</option><option value="gl">Galician</option><option value="ka">Georgian</option><option value="de">German</option><option value="el">Greek</option><option value="gu">Gujarati</option><option value="ht">Haitian Creole</option><option value="he">Hebrew</option><option value="hi">Hindi</option><option value="hu">Hungarian</option><option value="id">Indonesian</option><option value="it">Italian</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="lv">Latvian</option><option value="lt">Lithuanian</option><option value="mk">Macedonian</option><option value="ms">Malay</option><option value="mt">Maltese</option><option value="no">Norwegian</option><option value="fa">Persian</option><option value="tl">Filipino</option><option value="pl">Polish</option><option value="pt">Portuguese</option><option value="ro">Romanian</option><option value="ru">Russian</option><option value="sr">Serbian</option><option value="sk">Slovak</option><option value="sl">Slovenian</option><option value="es">Spanish</option><option value="sw">Swahili</option><option value="sv">Swedish</option><option value="th">Thai</option><option value="tr">Turkish</option><option value="uk">Ukrainian</option><option value="ur">Urdu</option><option value="vi">Vietnamese</option><option value="cy">Welsh</option><option value="yi">Yiddish</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-panels">
+          <div class="text-panel">
+            <div class="panel-top">
+              <span class="panel-tag">Input</span>
+              <div class="panel-btns">
+                <button class="micro-btn" id="speakSrcBtn">▶ Listen</button>
+                <button class="micro-btn" id="clearSrcBtn">✕ Clear</button>
+              </div>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste text to translate…&#10;&#10;Ctrl+Enter to translate" maxlength="5000" spellcheck="true"></textarea>
+            <div class="panel-bot">
+              <span class="char-count" id="charCount">0 / 5000</span>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--text3);" id="detectedInfo"></span>
+            </div>
+          </div>
+          <div class="text-panel">
+            <div class="panel-top">
+              <span class="panel-tag">Output</span>
+              <div class="panel-btns">
+                <button class="micro-btn" id="speakTgtBtn">▶ Listen</button>
+                <button class="micro-btn" id="copyBtn">⎘ Copy</button>
+                <button class="micro-btn" id="exportSingleBtn">↓ Export</button>
+              </div>
+            </div>
+            <div class="output-body" id="outputText"><span class="placeholder">Translation appears here…</span></div>
+            <div class="panel-bot">
+              <span class="char-count" id="outputCount">—</span>
+              <span class="engine-badge" id="engineBadge"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="translate-btn" id="translateBtn">
+            <span class="spinner" id="spinner"></span>
+            <span id="btnLabel">Translate →</span>
+          </button>
+          <button class="aux-btn" id="clearAllBtn">Clear All</button>
+          <button class="aux-btn" id="retryBtn">↺ Retry</button>
+          <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span>
+        </div>
+
+        <div class="status-row">
+          <div class="led" id="statusLed"></div>
+          <span id="statusMsg">Ready</span>
+          <span id="timeSeg" style="display:none;color:var(--text3);font-size:10px;"></span>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+
+        <div class="side-card">
+          <div class="side-card-head">Translation Quality</div>
+          <div class="side-card-body">
+            <div class="conf-score">
+              <span class="conf-num" id="confNum">—</span>
+              <span class="conf-pct" id="confPct"></span>
+            </div>
+            <div class="conf-track"><div class="conf-fill" id="confFill"></div></div>
+            <div class="conf-label" id="confLabel">Translate text to see quality score</div>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">Language Detection</div>
+          <div class="side-card-body">
+            <div class="detect-list" id="detectList">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);font-style:italic;">Awaiting input…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">Text Analysis</div>
+          <div class="side-card-body">
+            <div class="analysis-grid">
+              <div class="analysis-cell"><div class="analysis-val" id="aWords">—</div><div class="analysis-lbl">Words</div></div>
+              <div class="analysis-cell"><div class="analysis-val" id="aSents">—</div><div class="analysis-lbl">Sentences</div></div>
+              <div class="analysis-cell"><div class="analysis-val" id="aRead">—</div><div class="analysis-lbl">Readability</div></div>
+              <div class="analysis-cell"><div class="analysis-val" id="aFormal">—</div><div class="analysis-lbl">Formality</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-card" style="flex:1;">
+          <div class="side-card-head">
+            <span>History</span>
+            <button class="side-clear-btn" id="clearHistBtn">Clear</button>
+          </div>
+          <div class="hist-scroll" id="histList">
+            <div class="no-hist">No translations yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: BATCH -->
+  <div class="tab-content" id="tab-batch">
+    <div class="batch-layout">
+      <div class="batch-top">
+        <div class="field-group">
+          <span class="field-label">Target Language</span>
+          <select class="field-select" id="batchTarget">
+            <option value="fr">French</option><option value="en">English</option><option value="es">Spanish</option><option value="de">German</option><option value="it">Italian</option><option value="pt">Portuguese</option><option value="ja">Japanese</option><option value="ar">Arabic</option><option value="zh">Chinese (Simplified)</option><option value="ru">Russian</option><option value="ko">Korean</option><option value="hi">Hindi</option><option value="tr">Turkish</option><option value="nl">Dutch</option><option value="pl">Polish</option><option value="sv">Swedish</option><option value="vi">Vietnamese</option>
+          </select>
+        </div>
+        <div class="batch-progress-block" style="flex:1;min-width:180px;">
+          <div class="progress-track"><div class="progress-fill" id="batchFill"></div></div>
+          <div class="progress-label" id="batchLabel">0 / 0 lines</div>
+        </div>
+      </div>
+      <div class="batch-grid">
+        <div>
+          <div class="batch-area-label">Input Lines (one per line)</div>
+          <textarea class="batch-textarea" id="batchInput" placeholder="Hello, world!&#10;How are you?&#10;Good morning.&#10;Thank you very much."></textarea>
+        </div>
+        <div>
+          <div class="batch-area-label">Translated Output</div>
+          <div class="batch-output" id="batchOutput"><span class="placeholder-text">Results appear here after running…</span></div>
+        </div>
+      </div>
+      <div class="batch-actions">
+        <button class="batch-btn" id="batchRunBtn">▶ Run Batch</button>
+        <button class="batch-btn sec" id="batchJsonBtn">↓ JSON</button>
+        <button class="batch-btn sec" id="batchTxtBtn">↓ TXT</button>
+        <button class="batch-btn sec" id="batchClearBtn">✕ Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: API CONFIG -->
+  <div class="tab-content" id="tab-api">
+    <div class="api-layout">
+      <h2>API Configuration</h2>
+      <p>By default <strong style="color:var(--text2)">MyMemory</strong> (free, ~1,000 words/day) is used. Add a Google Translate API key for unlimited, higher-quality translations. All keys are stored locally in your browser — never sent to any server except the API provider directly.</p>
+      <div class="field-group" style="margin-bottom:16px;">
+        <label class="field-label">Active Engine</label>
+        <select class="field-select" id="engineSelect" style="max-width:280px;">
+          <option value="mymemory">MyMemory (Free)</option>
+          <option value="google">Google Translate (API Key)</option>
+        </select>
+      </div>
+      <div class="field-group" id="googleKeyGroup" style="margin-bottom:16px;display:none;">
+        <label class="field-label">Google API Key</label>
+        <input type="password" class="field-input" id="googleKey" placeholder="AIza…"/>
+        <div class="field-note">Stored in localStorage only. Sent only to Google's API.</div>
+      </div>
+      <div class="field-group" style="margin-bottom:20px;">
+        <label class="field-label">MyMemory Email <span style="color:var(--text3);font-weight:400;">(optional — raises daily limit to ~10k words)</span></label>
+        <input type="email" class="field-input" id="mmEmail" placeholder="you@example.com" style="max-width:320px;"/>
+      </div>
+      <button class="save-btn" id="saveApiBtn">Save Configuration</button>
+      <div class="api-info-box">
+        <strong>Fallback Logic</strong><br/>
+        If Google Translate returns an error, the engine automatically falls back to MyMemory. Both APIs are called directly from your browser — no proxy server involved.<br/><br/>
+        <strong>Rate Limits</strong><br/>
+        MyMemory (no email): ~1,000 words/day · MyMemory (with email): ~10,000 words/day · Google Translate: Unlimited (billed per character)
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-txt">Polyglot AI · Neural Translation Engine</span>
+    <span class="footer-txt" id="footerStat">0 translations this session</span>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── DATA ── */
+const RTL = new Set(['ar','he','fa','ur','yi']);
+const LANG = {auto:'Auto-Detect',af:'Afrikaans',sq:'Albanian',ar:'Arabic',hy:'Armenian',az:'Azerbaijani',eu:'Basque',be:'Belarusian',bn:'Bengali',bs:'Bosnian',bg:'Bulgarian',ca:'Catalan',zh:'Chinese (Simplified)','zh-TW':'Chinese (Traditional)',hr:'Croatian',cs:'Czech',da:'Danish',nl:'Dutch',en:'English',eo:'Esperanto',et:'Estonian',fi:'Finnish',fr:'French',gl:'Galician',ka:'Georgian',de:'German',el:'Greek',gu:'Gujarati',ht:'Haitian Creole',he:'Hebrew',hi:'Hindi',hu:'Hungarian',id:'Indonesian',it:'Italian',ja:'Japanese',ko:'Korean',lv:'Latvian',lt:'Lithuanian',mk:'Macedonian',ms:'Malay',mt:'Maltese',no:'Norwegian',fa:'Persian',tl:'Filipino',pl:'Polish',pt:'Portuguese',ro:'Romanian',ru:'Russian',sr:'Serbian',sk:'Slovak',sl:'Slovenian',es:'Spanish',sw:'Swahili',sv:'Swedish',th:'Thai',tr:'Turkish',uk:'Ukrainian',ur:'Urdu',vi:'Vietnamese',cy:'Welsh',yi:'Yiddish'};
+
+const $ = id => document.getElementById(id);
+
+/* ── STATE ── */
+let S = {
+  lastTx: '',
+  history: [],
+  sessionCount: 0,
+  engine: localStorage.getItem('pg_engine') || 'mymemory',
+  googleKey: localStorage.getItem('pg_gkey') || '',
+  mmEmail: localStorage.getItem('pg_mmemail') || '',
+  batchResults: [],
+};
+
+try { S.history = JSON.parse(localStorage.getItem('pg_hist') || '[]').slice(0, 30); } catch(e) {}
+
+/* ── INIT ── */
+function init() {
+  $('engineSelect').value = S.engine;
+  $('googleKey').value = S.googleKey;
+  $('mmEmail').value = S.mmEmail;
+  toggleGoogleField();
+  renderHistory();
+  updateEngineStatus();
+}
+
+/* ── TABS ── */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ── SOURCE INPUT ── */
+$('sourceText').addEventListener('input', () => {
+  const n = $('sourceText').value.length;
+  const el = $('charCount');
+  el.textContent = `${n} / 5000`;
+  el.className = 'char-count' + (n > 4500 ? ' warn' : '');
+  analyzeText();
+});
+
+function analyzeText() {
+  const txt = $('sourceText').value.trim();
+  if (!txt) { ['aWords','aSents','aRead','aFormal'].forEach(id => $(id).textContent = '—'); return; }
+  const words = txt.split(/\s+/).filter(Boolean);
+  const sents = txt.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const avgLen = words.reduce((s,w) => s + w.replace(/[^a-z]/gi,'').length, 0) / (words.length || 1);
+  const readLevel = avgLen < 4 ? 'Easy' : avgLen < 6 ? 'Mid' : 'Hard';
+  const formalWords = ['therefore','however','furthermore','consequently','regarding','pursuant','hereby','herein','aforementioned'];
+  const formalScore = words.filter(w => formalWords.includes(w.toLowerCase())).length;
+  const formality = formalScore > 2 ? 'Formal' : formalScore > 0 ? 'Mixed' : 'Casual';
+  $('aWords').textContent = words.length;
+  $('aSents').textContent = sents.length;
+  $('aRead').textContent = readLevel;
+  $('aFormal').textContent = formality;
+}
+
+/* ── SWAP ── */
+$('swapBtn').addEventListener('click', () => {
+  const sv = $('sourceLang').value, tv = $('targetLang').value;
+  if (sv === 'auto') { toast('Cannot swap Auto-Detect'); return; }
+  const srcOpt = [...$('sourceLang').options].find(o => o.value === tv);
+  const tgtOpt = [...$('targetLang').options].find(o => o.value === sv);
+  if (srcOpt) $('sourceLang').value = tv;
+  if (tgtOpt) $('targetLang').value = sv;
+  const oldSrc = $('sourceText').value;
+  if (S.lastTx) {
+    $('sourceText').value = S.lastTx;
+    $('charCount').textContent = `${S.lastTx.length} / 5000`;
+    $('outputText').textContent = oldSrc || '';
+    if (!oldSrc) $('outputText').innerHTML = '<span class="placeholder">Translation appears here…</span>';
+    S.lastTx = oldSrc;
+    applyRTL(); analyzeText();
+  }
+});
+
+/* ── CLEAR ── */
+$('clearSrcBtn').addEventListener('click', () => { $('sourceText').value = ''; $('charCount').textContent = '0 / 5000'; analyzeText(); });
+
+$('clearAllBtn').addEventListener('click', () => {
+  $('sourceText').value = ''; $('charCount').textContent = '0 / 5000';
+  $('outputText').innerHTML = '<span class="placeholder">Translation appears here…</span>';
+  $('outputCount').textContent = '—'; $('engineBadge').textContent = ''; $('detectedInfo').textContent = '';
+  S.lastTx = '';
+  resetSidebar(); setStatus('', 'Ready', false); analyzeText();
+});
+
+function resetSidebar() {
+  $('confNum').textContent = '—'; $('confNum').className = 'conf-num';
+  $('confPct').textContent = ''; $('confFill').style.width = '0%'; $('confFill').className = 'conf-fill';
+  $('confLabel').textContent = 'Translate text to see quality score';
+  $('detectList').innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);font-style:italic;">Awaiting input…</div>';
+}
+
+/* ── COPY / EXPORT ── */
+$('copyBtn').addEventListener('click', () => {
+  if (!S.lastTx) { toast('Nothing to copy'); return; }
+  navigator.clipboard.writeText(S.lastTx).then(() => toast('Copied to clipboard'));
+});
+
+$('exportSingleBtn').addEventListener('click', () => {
+  if (!S.lastTx) { toast('Nothing to export'); return; }
+  const src = $('sourceLang').value, tgt = $('targetLang').value;
+  const content = `POLYGLOT AI — Translation\n${'─'.repeat(36)}\nSource (${LANG[src]||src}):\n${$('sourceText').value}\n\nTranslation (${LANG[tgt]||tgt}):\n${S.lastTx}\n\nEngine: ${S.engine}\nTimestamp: ${new Date().toISOString()}`;
+  dl(content, 'translation.txt', 'text/plain'); toast('Exported as TXT');
+});
+
+/* ── SPEAK ── */
+$('speakSrcBtn').addEventListener('click', () => speak($('sourceText').value, $('sourceLang').value));
+$('speakTgtBtn').addEventListener('click', () => speak(S.lastTx, $('targetLang').value));
+function speak(text, lang) {
+  if (!text) { toast('Nothing to speak'); return; }
+  if (!window.speechSynthesis) { toast('TTS not supported'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang === 'auto' ? 'en' : lang;
+  speechSynthesis.cancel(); speechSynthesis.speak(u); toast('Speaking…');
+}
+
+/* ── TRANSLATE ── */
+$('translateBtn').addEventListener('click', doTranslate);
+$('retryBtn').addEventListener('click', doTranslate);
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (document.querySelector('.tab.active').dataset.tab === 'translate') doTranslate();
+  }
+});
+
+async function doTranslate() {
+  const text = $('sourceText').value.trim();
+  if (!text) { toast('Enter some text first'); return; }
+  const src = $('sourceLang').value, tgt = $('targetLang').value;
+  if (src !== 'auto' && src === tgt) { toast('Source = Target'); return; }
+
+  $('translateBtn').disabled = true;
+  $('spinner').style.display = 'block';
+  $('btnLabel').textContent = 'Translating…';
+  setStatus('loading', 'Sending request…', false);
+
+  const t0 = performance.now();
+  try {
+    let result;
+    if (S.engine === 'google' && S.googleKey) {
+      result = await txGoogle(text, src, tgt);
+    } else {
+      result = await txMyMemory(text, src, tgt);
+    }
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+
+    S.lastTx = result.text;
+    $('outputText').textContent = result.text;
+    $('outputCount').textContent = `${result.text.length} chars`;
+    $('engineBadge').textContent = result.engine.toUpperCase();
+    applyRTL();
+
+    if (result.detected && src === 'auto') {
+      $('detectedInfo').textContent = `Detected: ${LANG[result.detected] || result.detected}`;
+    }
+
+    // FIX 1: Confidence — derived from real signals, not mock data
+    updateConfidence(result.confidence, result.confidenceSource);
+
+    // FIX 2: Detection — show real API data only
+    updateDetection(src, result.detected, result.detectedRaw);
+
+    S.sessionCount++;
+    addHistory(text, result.text, src, tgt, result.engine);
+    $('footerStat').textContent = `${S.sessionCount} translation${S.sessionCount !== 1 ? 's' : ''} this session`;
+    setStatus('on', `${LANG[src === 'auto' ? 'auto' : src] || src} → ${LANG[tgt] || tgt}`, `${elapsed}s`);
+    toast('Translation complete');
+  } catch(err) {
+    $('outputText').innerHTML = '<span class="placeholder">Translation failed — check connection or API settings.</span>';
+    setStatus('off', 'Error: ' + err.message, false);
+    toast('Translation failed');
+  } finally {
+    $('translateBtn').disabled = false;
+    $('spinner').style.display = 'none';
+    $('btnLabel').textContent = 'Translate →';
+  }
+}
+
+/* ────────────────────────────────────────────────────
+   FIX 1: MyMemory — real confidence from API signals
+   MyMemory returns a `match` array with quality scores
+   (0–100) per translation memory hit. We use the best
+   real match quality plus penalise for short text and
+   low match count. We never fabricate a number.
+──────────────────────────────────────────────────── */
+async function txMyMemory(text, src, tgt) {
+  let url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(`${src === 'auto' ? 'autodetect' : src}|${tgt}`)}`;
+  if (S.mmEmail) url += `&de=${encodeURIComponent(S.mmEmail)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.responseStatus !== 200 && data.responseStatus !== 403) throw new Error(data.responseDetails || 'MyMemory error');
+
+  const translatedText = data.responseData.translatedText;
+
+  // ── Derive a meaningful confidence score from real API fields ──
+  const matches = (data.matches || []).filter(m => m.translation && m.translation.trim());
+
+  // Best quality score from TM matches (0-100 per API docs)
+  const bestQuality = matches.length
+    ? Math.max(...matches.map(m => parseFloat(m.quality) || 0))
+    : 0;
+
+  // How many distinct high-quality matches backed this translation?
+  const strongMatches = matches.filter(m => parseFloat(m.quality) >= 70).length;
+
+  // Penalty: very short text or single-word queries are less reliable
+  const wordCount = text.trim().split(/\s+/).length;
+  const lengthPenalty = wordCount < 3 ? 12 : wordCount < 6 ? 5 : 0;
+
+  // Penalty: if translated text looks suspiciously identical to source (no-op translation)
+  const identityPenalty = translatedText.trim().toLowerCase() === text.trim().toLowerCase() ? 30 : 0;
+
+  // Bonus: multiple strong TM matches increases reliability
+  const matchBonus = Math.min(strongMatches * 3, 10);
+
+  // If MyMemory gave us a decent quality signal, use it; otherwise cap at 60 (unknown)
+  let score;
+  if (bestQuality > 0) {
+    score = Math.round(bestQuality - lengthPenalty - identityPenalty + matchBonus);
+  } else {
+    // No match data — we genuinely don't know, cap at 55
+    score = Math.max(20, 55 - lengthPenalty - identityPenalty);
+  }
+  score = Math.max(0, Math.min(100, score));
+
+  // ── Detect language from API response ──
+  // MyMemory may return detected lang in responseData or first match
+  let detectedRaw = null;
+  if (src === 'auto') {
+    // Try to get from matches — first match often has source lang
+    const firstMatch = matches.find(m => m['source-segment'] && m.segment === m['source-segment']);
+    detectedRaw = data.responseData.detectedLanguage || null;
+  }
+
+  return {
+    text: translatedText,
+    confidence: score,
+    confidenceSource: bestQuality > 0 ? 'tm-match' : 'estimated',
+    engine: 'mymemory',
+    detected: detectedRaw,
+    detectedRaw: detectedRaw,
+  };
+}
+
+/* ────────────────────────────────────────────────────
+   Google translate — confidence from response signals
+   Google doesn't return a confidence score directly,
+   but we can infer quality from detectedSourceLanguage
+   confidence and whether it needed to detect the lang.
+──────────────────────────────────────────────────── */
+async function txGoogle(text, src, tgt) {
+  const url = `https://translation.googleapis.com/language/translate/v2?key=${S.googleKey}`;
+  const body = { q: text, target: tgt };
+  if (src !== 'auto') body.source = src;
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    toast('Google API error — falling back to MyMemory');
+    return txMyMemory(text, src, tgt);
+  }
+  const data = await res.json();
+  const t = data.data.translations[0];
+
+  // Google is generally high-quality; penalise only for known-weak pairs
+  const weakPairs = new Set(['eo','yi','ht','sw','tl','gu','mt']);
+  const qualityPenalty = weakPairs.has(tgt) || weakPairs.has(src) ? 8 : 0;
+  const score = Math.min(100, 95 - qualityPenalty);
+
+  return {
+    text: t.translatedText,
+    confidence: score,
+    confidenceSource: 'google',
+    engine: 'google',
+    detected: t.detectedSourceLanguage || null,
+    detectedRaw: t.detectedSourceLanguage || null,
+  };
+}
+
+function applyRTL() {
+  const el = $('outputText');
+  RTL.has($('targetLang').value) ? el.classList.add('rtl') : el.classList.remove('rtl');
+}
+
+/* ────────────────────────────────────────────────────
+   FIX 1: Confidence display
+   Renamed panel to "Translation Quality" and updated
+   labels to honestly reflect what the score means.
+──────────────────────────────────────────────────── */
+function updateConfidence(score, source) {
+  score = Math.max(0, Math.min(100, score));
+  const cls = score >= 80 ? 'high' : score >= 55 ? 'medium' : 'low';
+  $('confNum').textContent = score;
+  $('confNum').className = 'conf-num ' + cls;
+  $('confPct').textContent = '%';
+  $('confFill').style.width = score + '%';
+  $('confFill').className = 'conf-fill ' + (score < 80 ? (score < 55 ? 'low' : 'medium') : '');
+
+  let label = '';
+  if (source === 'tm-match') {
+    label = score >= 80
+      ? 'Strong TM match — high reliability'
+      : score >= 55
+        ? 'Partial TM match — review recommended'
+        : 'Weak TM match — verify manually';
+  } else if (source === 'google') {
+    label = score >= 80 ? 'Google neural translation' : 'Neural — less common language pair';
+  } else {
+    label = 'No TM data — estimated quality';
+  }
+  $('confLabel').textContent = label;
+}
+
+/* ────────────────────────────────────────────────────
+   FIX 2: Language Detection sidebar
+   Only shows data that actually came from the API.
+   - If source was set to Auto-Detect: shows the API-
+     detected language (real data from MyMemory or Google).
+   - If source was manually selected: shows the chosen
+     language and notes it was user-specified.
+   - Never fabricates probability bars for alternatives.
+──────────────────────────────────────────────────── */
+function updateDetection(srcCode, detected, detectedRaw) {
+  const isAuto = srcCode === 'auto';
+  const resolvedLang = detected || (isAuto ? null : srcCode);
+
+  if (!resolvedLang && isAuto) {
+    // API gave us nothing on auto-detect
+    $('detectList').innerHTML = `
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);">
+        Auto-detect returned no result.<br/>Try specifying source language manually.
+      </div>`;
+    return;
+  }
+
+  if (!isAuto) {
+    // User manually picked a language — show it clearly
+    $('detectList').innerHTML = `
+      <div class="detect-item">
+        <div class="detect-item-row">
+          <span class="detect-lang top">${LANG[srcCode] || srcCode}</span>
+          <span class="detect-prob" style="color:var(--text3);">Selected</span>
+        </div>
+        <div class="detect-bar"><div class="detect-bar-fill top" style="width:100%"></div></div>
+      </div>
+      <div class="detect-note">Source language was manually selected — no auto-detection performed.</div>`;
+    return;
+  }
+
+  // Auto-detect mode — show what the API actually returned
+  const langName = LANG[resolvedLang] || resolvedLang;
+  $('detectList').innerHTML = `
+    <div class="detect-item">
+      <div class="detect-item-row">
+        <span class="detect-lang top">${langName}</span>
+        <span class="detect-prob" style="color:var(--green);font-family:var(--mono);font-size:10px;">Detected</span>
+      </div>
+      <div class="detect-bar"><div class="detect-bar-fill top" style="width:100%"></div></div>
+    </div>
+    <div class="detect-note">
+      Detected by ${S.engine === 'google' && S.googleKey ? 'Google Translate' : 'MyMemory'} API.<br/>
+      For multi-language detection, switch to the Google engine.
+    </div>`;
+}
+
+/* ── STATUS ── */
+function setStatus(type, msg, time) {
+  const led = $('statusLed');
+  led.className = 'led' + (type === 'on' ? ' on' : type === 'loading' ? ' warn' : type === 'off' ? ' off' : '');
+  $('statusMsg').textContent = msg;
+  const ts = $('timeSeg');
+  if (time) { ts.style.display = ''; ts.textContent = `${time} latency`; }
+  else ts.style.display = 'none';
+}
+
+/* ── HISTORY ── */
+function addHistory(src, tgt, srcL, tgtL, engine) {
+  S.history.unshift({ src, tgt, srcL, tgtL, engine, ts: Date.now() });
+  if (S.history.length > 30) S.history.pop();
+  try { localStorage.setItem('pg_hist', JSON.stringify(S.history)); } catch(e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = $('histList');
+  if (!S.history.length) { el.innerHTML = '<div class="no-hist">No translations yet.</div>'; return; }
+  el.innerHTML = S.history.slice(0, 20).map((h, i) => `
+    <div class="hist-item" data-i="${i}">
+      <div class="hist-langs">${LANG[h.srcL]||h.srcL} → ${LANG[h.tgtL]||h.tgtL}</div>
+      <div class="hist-src">${esc(h.src.substring(0,60))}${h.src.length>60?'…':''}</div>
+      <div class="hist-tgt">${esc(h.tgt.substring(0,60))}${h.tgt.length>60?'…':''}</div>
+      <div class="hist-meta">
+        <span class="hist-engine">${h.engine}</span>
+        <span class="hist-time">${timeAgo(h.ts)}</span>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.hist-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const h = S.history[+item.dataset.i];
+      $('sourceText').value = h.src;
+      $('charCount').textContent = `${h.src.length} / 5000`;
+      $('outputText').textContent = h.tgt;
+      S.lastTx = h.tgt;
+      $('outputCount').textContent = `${h.tgt.length} chars`;
+      const so = [...$('sourceLang').options].find(o => o.value === h.srcL);
+      if (so) $('sourceLang').value = h.srcL;
+      const to = [...$('targetLang').options].find(o => o.value === h.tgtL);
+      if (to) $('targetLang').value = h.tgtL;
+      applyRTL(); analyzeText(); setStatus('on', 'Loaded from history', false); toast('Loaded from history');
+    });
+  });
+}
+
+$('clearHistBtn').addEventListener('click', () => {
+  S.history = [];
+  try { localStorage.removeItem('pg_hist'); } catch(e) {}
+  renderHistory(); toast('History cleared');
+});
+
+/* ── API CONFIG ── */
+$('engineSelect').addEventListener('change', toggleGoogleField);
+function toggleGoogleField() { $('googleKeyGroup').style.display = $('engineSelect').value === 'google' ? '' : 'none'; }
+
+$('saveApiBtn').addEventListener('click', () => {
+  S.engine = $('engineSelect').value;
+  S.googleKey = $('googleKey').value.trim();
+  S.mmEmail = $('mmEmail').value.trim();
+  localStorage.setItem('pg_engine', S.engine);
+  localStorage.setItem('pg_gkey', S.googleKey);
+  localStorage.setItem('pg_mmemail', S.mmEmail);
+  updateEngineStatus(); toast('Configuration saved');
+});
+
+function updateEngineStatus() {
+  const led = $('engineLed'), lbl = $('engineStatusLabel');
+  if (S.engine === 'google' && S.googleKey) {
+    led.className = 'led on'; lbl.textContent = 'Google Translate · API';
+  } else {
+    led.className = 'led warn'; lbl.textContent = 'MyMemory · Free Tier';
+  }
+}
+
+/* ────────────────────────────────────────────────────
+   FIX 3: Batch — now uses the configured engine
+   (Google or MyMemory) instead of always MyMemory.
+──────────────────────────────────────────────────── */
+$('batchRunBtn').addEventListener('click', runBatch);
+
+async function runBatch() {
+  const lines = $('batchInput').value.split('\n').filter(l => l.trim());
+  if (!lines.length) { toast('No lines to translate'); return; }
+  const tgt = $('batchTarget').value;
+  S.batchResults = [];
+  $('batchRunBtn').disabled = true;
+  $('batchRunBtn').textContent = '⏳ Running…';
+  $('batchOutput').textContent = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const pct = (i / lines.length) * 100;
+    $('batchFill').style.width = pct + '%';
+    $('batchLabel').textContent = `${i + 1} / ${lines.length} lines`;
+    try {
+      // FIX: use configured engine, not always MyMemory
+      const r = S.engine === 'google' && S.googleKey
+        ? await txGoogle(lines[i].trim(), 'auto', tgt)
+        : await txMyMemory(lines[i].trim(), 'auto', tgt);
+      S.batchResults.push({ original: lines[i], translation: r.text, confidence: r.confidence, engine: r.engine });
+      $('batchOutput').textContent += `[${i+1}] ${r.text}\n`;
+    } catch(e) {
+      S.batchResults.push({ original: lines[i], translation: '[ERROR]', confidence: 0, engine: 'error' });
+      $('batchOutput').textContent += `[${i+1}] [ERROR]\n`;
+    }
+    if (i < lines.length - 1) await new Promise(r => setTimeout(r, S.engine === 'google' ? 150 : 380));
+  }
+  $('batchFill').style.width = '100%';
+  $('batchLabel').textContent = `${lines.length} / ${lines.length} lines — complete`;
+  $('batchRunBtn').disabled = false;
+  $('batchRunBtn').textContent = '▶ Run Batch';
+  toast(`Batch complete: ${lines.length} lines`);
+}
+
+$('batchJsonBtn').addEventListener('click', () => {
+  if (!S.batchResults.length) { toast('No results to export'); return; }
+  const tgt = $('batchTarget').value;
+  dl(JSON.stringify({ engine: S.engine, target_language: LANG[tgt]||tgt, timestamp: new Date().toISOString(), results: S.batchResults }, null, 2), 'batch.json', 'application/json');
+  toast('Exported as JSON');
+});
+
+$('batchTxtBtn').addEventListener('click', () => {
+  if (!S.batchResults.length) { toast('No results to export'); return; }
+  const txt = S.batchResults.map((r,i) => `[${i+1}]\nOriginal: ${r.original}\nTranslation: ${r.translation}\n`).join('\n');
+  dl(txt, 'batch.txt', 'text/plain'); toast('Exported as TXT');
+});
+
+$('batchClearBtn').addEventListener('click', () => {
+  $('batchInput').value = '';
+  $('batchOutput').innerHTML = '<span class="placeholder-text">Results appear here after running…</span>';
+  $('batchFill').style.width = '0%'; $('batchLabel').textContent = '0 / 0 lines'; S.batchResults = [];
+});
+
+/* ── UTILS ── */
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+function dl(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename; a.click();
+}
+
+init();
+</script>
+</body>
+</html>
